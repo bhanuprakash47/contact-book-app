@@ -1,12 +1,14 @@
-// Basic Express server setup
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
+const express=require("express")
+const cors=require("cors")
 
-app.get('/', (req, res) => {
-  res.send('Hello from backend!');
-});
+const app=express()
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+
+
+app.use(express.json())
+app.use(cors())
+
+app.listen(5000,()=>{
+    console.log("server running at port 5000")
+})
+
