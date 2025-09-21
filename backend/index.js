@@ -40,10 +40,29 @@ app.get("/",(req,res)=>{
 })
 
 
+const validateContactData = (req, res, next) => {
+    const { name, email, phone } = req.body;
+
+    if (!name || !email || !phone) {
+        return res.status(400).json({ error: 'All fields (name, email, phone) are required.' });
+    }
+
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phone)) {
+        return res.status(400).json({ error: 'Please enter a valid 10-digit phone number.' });
+    }
+
+    next();
+};
 
 
 
-app.post("/contacts", async (req,res)=>{
+app.post("/contacts",validateContactData, async (req,res)=>{
     const userDetails=req.body 
     const {name,email,phone}=userDetails
 
