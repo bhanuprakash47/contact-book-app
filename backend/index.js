@@ -1,29 +1,100 @@
 const express=require("express")
 const cors=require("cors")
+const {open}=require("sqlite")
 const sqlite3=require("sqlite3")
+const path=require("path")
+const { error } = require("console")
 
 const app=express()
-
-const db= new sqlite3.Database("./contacts.db",(error)=>{
-    if (error){
-        console.log("database connection failed:",error)
-    }
-    else{
-        console.log("database connection successful")
-    }
-})
 
 
 app.use(express.json())
 app.use(cors())
 
+const dbpath=path.join(__dirname,"contacts.db")
+
+let db=null
+
+const IntializeServerandDB=async()=>{
+    try{
+        db= await open({
+            filename:dbpath,
+            driver:sqlite3.Database,
+        });
+        app.listen(5000,()=>{
+            console.log("server running at port 5000")
+        });
+        await db.run("CREATE TABLE IF NOT EXISTS contacts( id INTEGER PRIMARY KEY, name TEXT, email TEXT, phone TEXT)");
+    }catch(e){
+        console.log(`DB error:${e}`)
+        process.exit(1)
+    }
+};
+
+IntializeServerandDB()
+
+
+
 app.get("/",(req,res)=>{
     res.send("sample")
 })
 
-app.listen(5000,()=>{
-    console.log("server running at port 5000")
+
+
+
+
+app.post("/contacts", async (req,res)=>{
+    const userDetails=req.body 
+    const {name,email,phone}=userDetails
+
+    if (!name || !email || !phone){
+        res.status(401)
+        res.send({error:"Missing required fields: name, email and phone"})
+        return
+    }
+
+    const addContactQuery=`
+    INSERT INTO contacts(name,email,phone)
+    VALUES('${name}','${email}','${phone}')
+    `
+    try{
+        const dbResponse=  await db.run(addContactQuery,(err)=>{if (err){console.log(err)}})
+        const contactId=dbResponse.lastID
+        res.status(201)
+        res.send({
+            id:contactId,
+            name,
+            email,
+            phone
+        })}
+    catch(e){
+        res.status(500)
+        res.send({error:e.message})
+    }
 })
 
 
-db.run("CREATE TABLE IF NOT EXISTS contacts( id INTEGER PRIMARY KEY, name TEXT,email TEXT,phone TEXT)")
+app.get("/contacts",async(req,res)=>{
+    const dbQuery=`select * from contacts`
+    try{
+        const dbResponseforGet= await db.all(dbQuery)
+        res.send(dbResponseforGet)
+    }
+    catch(e){
+        res.status(500)
+        res.send({error:e.message})
+    }
+})
+
+
+app.delete("/contacts/:contactId",async(req,res)=>{
+    const {contactId}=req.params
+    try{
+        const deleteQuery=`DELETE FROM contacts WHERE id=${contactId}`;
+        await db.run(deleteQuery)
+    res.send("deleted successfully")}
+    catch(e){
+        res.status(500)
+        res.send({error:e.message})
+    }
+})
