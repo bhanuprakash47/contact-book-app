@@ -75,7 +75,19 @@ app.post("/contacts", async (req,res)=>{
 
 
 app.get("/contacts",async(req,res)=>{
-    const dbQuery=`select * from contacts`
+    const { page, limit } = req.query
+    const pageNum = parseInt(page)
+    const limitNum = parseInt(limit)
+
+    if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
+        res.status(400).send({ error: "Invalid page or limit number. Both must be positive integers." })
+        return
+    }
+
+    const offset = (pageNum - 1) * limitNum
+
+    const dbQuery = `SELECT * FROM contacts ORDER BY id LIMIT ${limitNum} OFFSET ${offset}`
+
     try{
         const dbResponseforGet= await db.all(dbQuery)
         res.send(dbResponseforGet)
