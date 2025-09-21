@@ -3,6 +3,8 @@ import { useState ,useEffect}  from "react"
 import LoadingView from "../Loader"
 import FailureView from "../FailureView"
 
+import "./index.css"
+
 const apiStatusConstants={
      initial: 'INITIAL',
     success: 'SUCCESS',
@@ -24,7 +26,7 @@ const ContactForm=()=>{
     const onChangeEmail=(event)=>setEmail(event.target.value)
     const onChangePhoneNumber=(event)=>setPhone(event.target.value)
     
-    const SubmitForm=(event)=>{
+    const SubmitForm= async(event)=>{
         event.preventDefault()
         const emailregx = /^\S+@\S+\.\S+$/
         if (!emailregx.test(email)) {
@@ -41,9 +43,63 @@ const ContactForm=()=>{
         } else {
             setPhoneErrMsg("")
         }
-
+        updateFormDetails({name,email,phone})
+        postApiCall()
     }
 
+    const postApiCall= async()=>{
+        setApiStatus(apiStatusConstants.inProgress)
+        const url="http://localhost:5000/contacts/"
+        const contactDetails={name,email,phone}
+        const options={
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify(contactDetails)
+        }
+        try{
+            const response= await fetch(url,options)
+            if (response.ok===true){
+                const data= await response.json()
+                setApiStatus(apiStatusConstants.success)
+                console.log(data)
+                apiCall()
+            }else{
+                setApiStatus(apiStatusConstants.failure)
+
+            }
+        }catch(err){
+            setApiStatus(apiStatusConstants.failure)
+            console.log("Error fetching data:",err)
+        }
+    }
+
+    const deleteApi=async(id)=>{
+        setApiStatus(apiStatusConstants.inProgress)
+        const url=`http://localhost:5000/contacts/${id}`
+        const options={method:"DELETE"}
+        try{
+            const response= await fetch(url,options)
+            if (response.ok===true){
+                setApiStatus(apiStatusConstants.success)
+                console.log("contact deleted successfully")
+            }else{
+                setApiStatus(apiStatusConstants.failure)
+
+            }
+        }catch(err){
+            setApiStatus(apiStatusConstants.failure)
+            console.log("Error fetching data:",err)
+        }
+    }
+
+    const deleteContact=(id)=>{
+        deleteApi(id)
+        updateContactsList((prev)=>{
+            return prev.filter(each=>(each.id!==id))
+        })
+    }
 
     useEffect(()=>{
             apiCall()
@@ -52,15 +108,14 @@ const ContactForm=()=>{
     const apiCall=async()=>{
         setApiStatus(apiStatusConstants.inProgress)
         try {
-            const responseData = await fetch("http://localhost:5000/contacts?page=1&limit=10") 
+            const responseData = await fetch("http://localhost:5000/contacts?page=1&limit=100") 
             if (responseData.ok === true) {
                 const data = await responseData.json()
                 updateContactsList(data)
                 setApiStatus(apiStatusConstants.success)
-                console.log("API call successful. Status:", apiStatusConstants.success);
             } else {
                 setApiStatus(apiStatusConstants.failure)
-                console.log("API call failed with response not OK. Status:", apiStatusConstants.failure);
+    
             }
         } catch (e) {
             setApiStatus(apiStatusConstants.failure)
@@ -78,10 +133,13 @@ const ContactForm=()=>{
             case apiStatusConstants.success:
                 return (<div className="contacts-list-container">
                 {contactsList.map((each) => (
-                    <div key={each.id} className="contact-item">
+                    <div key={each.id} className="contact-item-container">
                         <p className="contact-name">{each.name}</p>
-                        <p className="contact-email">{each.email}</p>
-                        <p className="contact-phone">{each.phone}</p>
+                        <div className="right-side">
+                            <p className="contact-email">{each.email}</p>
+                            <p className="contact-phone">{each.phone}</p>
+                            <button type="button" onClick={()=>{deleteContact(each.id)}}>Delete Contact</button>
+                        </div>
                     </div>
                 ))}
             </div>)
@@ -129,6 +187,7 @@ const ContactForm=()=>{
                 <button className="add-button" type="submit">Add Contact</button>
             </form>
             {renderContactsList()}
+            
         </div>
     )
 
